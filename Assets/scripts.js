@@ -33,7 +33,12 @@ let QuizModel = {
     }
   ],
 
-  scoreBoard: [],
+
+  /*
+    Objects in the format:
+      { initials: "BCF", score: 10}
+   */ 
+  scoreboard: [],
 
   gameParameters: {
     countdownStartSeconds: 90,
@@ -123,6 +128,42 @@ let QuizModel = {
 
     },
 
+
+  addPlayerToScoreboard:
+    function(playerInitials) {
+      console.log(this.scoreboard)
+      this.scoreboard.push({
+        initials: playerInitials,
+        score: this.getScore()
+      });
+      this.saveScoreboard();
+    },
+
+  getScoreboard:
+    function() {
+      return this.scoreboard;
+    },
+
+  loadScoreboard:
+    function() {
+      if (!this.scoreboard) {
+        this.scoreboard = [];
+      }
+      let localScoreboard = localStorage.getItem("Scoreboard");
+console.log(this.scoreboard)
+alert(localScoreboard)
+      if (localScoreboard) {
+        this.scoreboard = JSON.parse(localScoreboard);
+      }
+      
+    },
+
+  saveScoreboard:
+    function() {
+      console.log()
+      localStorage.setItem("Scoreboard", JSON.stringify(this.scoreboard));
+    },
+
   substractTimePenalty:
     function() {
       this.currentGame.timeRemaingSeconds -= this.gameParameters.incorrectPenaltySeconds;
@@ -153,10 +194,12 @@ let QuizController = {
       this.model = QuizModel;
       this.view = QuizView;
 
-      this.view.showQuizWelcomePane(() => {
-        event.preventDefault();
-        QuizController.beginQuiz();
-      });
+      this.model.loadScoreboard();
+
+      this.view.welcomePane.setListeners(() => QuizController.beginQuiz());
+      this.view.setHighScoreLink(() => QuizController.getScoreboardPane());
+
+      this.view.welcomePane.show();
     },
 
 
@@ -195,46 +238,28 @@ let QuizController = {
     function() {
       let question = this.model.getNewQuestion();
       if (question) {
-        this.view.showQuestionPane(question, answer => {
-            event.preventDefault();
-            QuizController.evaluateAnswer(answer);
-        });
+        this.view.showQuestionPane(question,
+          answer => QuizController.evaluateAnswer(answer));
       } else {
         this.endQuiz();
       }
     },
 
-  saveScoreBoard:
-    function() {
-      localStorage.setItem("ScoreBoard", QuizModel.ScoreBoard);
-    },
-
-  loadScoreBoard:
-    function() {
-      QuizModel.scoreBoard = localStorage.getItem("ScoreBoard");
-      if (null === QuizModel.scoreBoard) {
-        QuizModel.ScoreBoard = [];
-      }
-    },
-
-  resetScoreBoard:
-    function() {
-      QuizModel.ScoreBoard = [];
-      this.saveScoreBoard();
-    },
-
-  addScore:
-    function(initials) {
-      QuizModel.ScoreBoard += {
-        Initials: initials,
-        Score: QuizModel.CurrentGame.Score
-      }
-      this.saveScoreBoard();
-    },
-
   endQuiz:
     function() {
-      this.view.showQuizDonePane(this.model.getScore());
+      this.view.showQuizDonePane(this.model.getScore(),
+        playerInitials => QuizController.updateScoreboard(playerInitials));
+    },
+
+  updateScoreboard:
+    function(playerInitials) {
+      this.model.addPlayerToScoreboard(playerInitials);
+      this.view.showScoreboardPane(this.model.getScoreboard());
+    },
+
+  getScoreboardPane:
+    function() {
+      this.view.showScoreboardPane(this.model.getScoreboard());
     }
 };
 
@@ -247,7 +272,41 @@ let QuizView = {
       "Welcome to the JavaScript coding quiz!",
       "Test your knowledge of JavaScript by seeing how many you can get right. You will have 90 seconds to complete the quiz, but you'll lose 15 for every wrong answer.",
       "Good luck!"
-    ]
+    ],
+
+    beginListener: null,
+
+    show:
+      function() {
+        QuizView.getQuizHeader().textContent = this.title;
+        QuizView.hideQuizStatus();
+        QuizView.clearQuizContent();
+
+        let content = QuizView.getQuizContent();
+      
+        for (let paragraph of this.text) {
+          let pTag = document.createElement("p");
+          pTag.textContent = paragraph;
+          content.appendChild(pTag)
+        }
+      
+        let divTag = document.createElement("div");
+        divTag.addEventListener("click", () => {
+          event.preventDefault();
+          if (event.target.matches("button")) {
+            this.beginListener();
+          }
+        });
+
+        divTag.appendChild(QuizView.addQuizNavButton("Begin", null)
+        );
+        content.appendChild(divTag);
+      },
+
+    setListeners:
+      function(beginCallback) {
+        this.beginListener = beginCallback;
+      }
   },
 
   endGamePane: {
@@ -255,6 +314,9 @@ let QuizView = {
     text: "Your score was {0}."
   },
 
+  scoreboardPane: {
+    title: "Highscores"
+  },
 
 
   showQuizWelcomePane:
@@ -287,70 +349,136 @@ let QuizView = {
     },
 
   showQuizDonePane:
-    function(score) {
+    function(score, updateScoreboardCallback) {
       this.getQuizHeader().textContent = this.endGamePane.title;
       this.clearQuizContent();
 
       let pTag = document.createElement("p");
       pTag.textContent = this.endGamePane.text.replace("{0}", score);
       this.getQuizContent().appendChild(pTag);
-
-      this.getQuizContent().appendChild(this.addScoreBoardForm());
+      this.getQuizContent().appendChild(
+        this.addScoreBoardForm(updateScoreboardCallback)
+      );
     },
 
+  showScoreboardPane:
+    function(scoreboard) {
+      this.getQuizHeader().textContent = this.scoreboardPane.title;
+      this.clearQuizContent();
+
+      this.getQuizContent().appendChild(this.addScoreboardTable(scoreboard));
+      this.getQuizContent().appendChild(this.addQuizNavButton("Go Back", null));
+      this.getQuizContent().appendChild(this.addQuizNavButton("Clear Highscores", null));
+    },
+
+  setHighScoreLink:
+    function(scoreboardCallback) {
+      this.getQuizHighScoresLink().addEventListener("click", scoreboardCallback);
+    },
 
   addScoreBoardForm:
-    function(formCallback) {
-      let formTag = document.createElement("form");
+    function(buttonCallback) {
+      let
+        formTag = document.createElement("form"),
+        divTag = document.createElement("div"),
+        labelTag = document.createElement("label"),
+        inputTag = document.createElement("input");
+
       formTag.id = "quiz-scoreboard-form";
       formTag.className = "form-inline";
 
-      let divTag = document.createElement("div")
       divTag.className = "form-group w-100";
 
-      let labelTag = document.createElement("label");
       labelTag.textContent = "Enter your initials: ";
       labelTag.className = "col-form-label";
       labelTag.htmlFor = "player-initials"
 
-      let inputTag = document.createElement("input");
       inputTag.id = "player-initials";
       inputTag.type = "text";
       inputTag.className = "form-control mx-0 mx-md-3"
 
       divTag.appendChild(labelTag);
       divTag.appendChild(inputTag);
-      divTag.appendChild(this.addQuizNavButton("Submit", null))
+
+      divTag.appendChild(this.addQuizNavButton("Submit", () => {
+        event.preventDefault();
+        let initials = event.target.form.elements["player-initials"].value;
+        buttonCallback(initials);
+      }));
+
       formTag.appendChild(divTag);
 
       return formTag;
     },
 
+  addScoreboardTable(scoreboard) {
+    let
+      tableTag = document.createElement("table"),
+      tbodyTag = document.createElement("tbody");
+    
+    tableTag.classList = "table";
+
+    for (let i = 0; i < scoreboard.length; i++) {
+      let trTag = document.createElement("tr");
+
+      if (this.isEven(i)) {
+        trTag.classList = "table-info";
+      }
+
+      trTag.appendChild(this.addScoreboardTableData(i + 1));
+      trTag.appendChild(this.addScoreboardTableData(scoreboard[i].initials));
+      trTag.appendChild(this.addScoreboardTableData(scoreboard[i].score));
+
+      tbodyTag.appendChild(trTag)
+    }
+
+    tableTag.appendChild(tbodyTag);
+
+    return tableTag;
+  },
+
+  addScoreboardTableData:
+    function(dataContent) {
+      let tdTag = document.createElement("td");
+
+      tdTag.textContent = dataContent;
+      return tdTag;
+    },
+
   addQuizNavButton:
     function(buttonText, buttonCallback) {
-      let button = document.createElement("button");
+      let button = this.addQuizButton(buttonText);
     
-      button.setAttribute("class", "btn btn-info text-left mr-1");
-      button.addEventListener("click", buttonCallback);
-      button.type = "submit";
-      button.textContent = buttonText;
-    
+      button.className = "btn btn-info text-left mr-1";
+      if (buttonCallback) {
+        button.addEventListener("click", () => buttonCallback());
+      }
       return button;
     },
     
   addQuizAnswerButton:
     function(buttonText, buttonCallback) {
-      let button = document.createElement("button");
+      let button = this.addQuizButton(buttonText);
     
-      button.setAttribute("type", "button");
-      button.setAttribute("class", "btn btn-lg btn-block btn-info text-left");
-      button.addEventListener("click", () => buttonCallback(button.value));
-      button.textContent = buttonText;
-      button.value = buttonText;
+      button.className = "btn btn-lg btn-block btn-info text-left";
+      button.addEventListener("click", () => {
+        event.preventDefault();
+        buttonCallback(button.value)
+      });
     
       return button;
     },
     
+  addQuizButton:
+    function(buttonText) {
+      let button = document.createElement("button");
+    
+      button.type = "submit";
+      button.textContent = buttonText;
+      button.value = buttonText;
+
+      return button;
+    },
 
   clearQuizContent:
     function() {
@@ -373,6 +501,11 @@ let QuizView = {
       this.getQuizStatus().textContent = text;
     },
 
+  getQuizHighScoresLink:
+    function() {
+      return document.querySelector("#quiz-high-scores");
+    },
+
   getQuizHeader:
     function() {
       return document.querySelector("#quiz-header");
@@ -386,6 +519,16 @@ let QuizView = {
   getQuizStatus:
     function() {
       return document.querySelector("#quiz-status");
+    },
+
+
+  /*
+    Helper function to determine if a number is even. Used to create
+    color banded rows.
+   */
+  isEven:
+    function(number) {
+      return 0 === number % 2;
     }
 };
 
