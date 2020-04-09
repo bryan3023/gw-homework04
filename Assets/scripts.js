@@ -57,8 +57,7 @@ let QuizModel = {
     If available, return a new question and append its ID to the list of those
     that have been asked. If there are no more questions, return null.
    */
-  getNewQuestion:
-    function() {
+  getNewQuestion() {
       let
         available = this.getAvailableQuestions();
       
@@ -76,8 +75,7 @@ let QuizModel = {
     From the list of available questions, return those that haven't
     been asked yet.
    */
-  getAvailableQuestions:
-    function() {
+  getAvailableQuestions() {
       return this.questions.filter(
         q => -1 === this.currentGame.askedQuestions.indexOf(q.id));
     },
@@ -87,8 +85,7 @@ let QuizModel = {
     Return true if the answer provided matches the correct answer
     for the current question.
    */
-  isAnswerCorrect:
-    function(answer) {
+  isAnswerCorrect(answer) {
       let
         currentQuestion = this.questions.filter(q => q.id === this.getCurrentQuestionId())[0],
         correctAnswer = currentQuestion.answers.filter(a => a.correct)[0];
@@ -101,8 +98,7 @@ let QuizModel = {
     Return the current (i.e., last) question from the list of
     those that have been asked.
    */
-  getCurrentQuestionId:
-    function() {
+  getCurrentQuestionId() {
       let asked = this.currentGame.askedQuestions;
       return asked[asked.length - 1];
     },
@@ -110,65 +106,76 @@ let QuizModel = {
   /*
     Return the final score of the game.
    */
-  getScore:
-    function() {
-      return this.currentGame.countCorrectAnswers * this.gameParameters.pointsPerCorrectAnswer;
-    },
+  getScore() {
+    return this.currentGame.countCorrectAnswers
+      * this.gameParameters.pointsPerCorrectAnswer;
+  },
 
 
   /*
    */
-  increaseScore:
-    function() {
-      this.currentGame.countCorrectAnswers++;
-    },
-
-  startTimer:
-    function(timerCallback) {
-
-    },
+  increaseScore() {
+    this.currentGame.countCorrectAnswers++;
+  },
 
 
-  addPlayerToScoreboard:
-    function(playerInitials) {
-      console.log(this.scoreboard)
-      this.scoreboard.push({
-        initials: playerInitials,
-        score: this.getScore()
-      });
-      this.saveScoreboard();
-    },
+  addPlayerToScoreboard(playerInitials) {
+    this.scoreboard.push({
+      initials: playerInitials,
+      score: this.getScore()
+    });
+    this.saveScoreboard();
+  },
 
-  getScoreboard:
-    function() {
-      return this.scoreboard;
-    },
+  getScoreboard() {
+    return this.scoreboard;
+  },
 
-  loadScoreboard:
-    function() {
-      if (!this.scoreboard) {
-        this.scoreboard = [];
-      }
-      let localScoreboard = localStorage.getItem("Scoreboard");
+  sortScoreboardScoreDescending(player1, player2) {
+    if (player1.score > player2.score) {
+      return -1;
+    }
+    if (player1.score < player2.score) {
+      return 1;
+    }
+    return 0;
+  },
 
-      if (localScoreboard) {
-        this.scoreboard = JSON.parse(localScoreboard);
-      }
-    },
+  loadScoreboard() {
+    if (!this.scoreboard) {
+      this.scoreboard = [];
+    }
+    let localScoreboard = localStorage.getItem("Scoreboard");
 
-  saveScoreboard:
-    function() {
-      console.log()
-      localStorage.setItem("Scoreboard", JSON.stringify(this.scoreboard));
-    },
+    if (localScoreboard) {
+      this.scoreboard = JSON.parse(localScoreboard);
+    }
+  },
 
-  substractTimePenalty:
-    function() {
-      this.currentGame.timeRemaingSeconds -= this.gameParameters.incorrectPenaltySeconds;
-    },
+  saveScoreboard() {
+    let sortedScoreboard = this.scoreboard.sort(this.sortScoreboardScoreDescending);
+    localStorage.setItem("Scoreboard", JSON.stringify(sortedScoreboard));
+  },
 
-  reset:
-    function() {
+  clearScoreboard() {
+    localStorage.removeItem("Scoreboard");
+    this.scoreboard = [];
+  },
+
+  getTimeRemaining() {
+    return this.currentGame.timeRemaingSeconds;
+  },
+
+  tickTimeRemaining() {
+      this.currentGame.timeRemaingSeconds--;
+  },
+
+  substractTimePenalty() {
+    this.currentGame.timeRemaingSeconds
+      -= this.gameParameters.incorrectPenaltySeconds;
+  },
+
+  reset() {
       this.currentGame.timeRemaingSeconds = this.gameParameters.countdownStartSeconds;
       this.currentGame.countCorrectAnswers = 0;
       this.currentGame.askedQuestions = [];
@@ -181,53 +188,79 @@ let QuizController = {
 
   model: null,
   view: null,
+  timer: null,
 
 
   /*
-    Quiz entry point. Initialize the state and show the welcome pane.
+    Quiz entry point. Initialize state, wire in the callbacks, and show the
+    welcome pane.
    */
-  start:
-    function() {
-      this.model = QuizModel;
-      this.view = QuizView;
+  start() {
+    this.model = QuizModel;
+    this.view = QuizView;
 
-      this.model.loadScoreboard();
-      this.view.scoreboardPane.setScoreboard(this.model.getScoreboard());
+    this.model.loadScoreboard();
 
-      this.view.highscoreLink.setCallback(() => QuizView.showScoreboardPane());
-      this.view.welcomePane.setCallback(() => QuizController.beginQuiz());
-      this.view.questionsPane.setCallback(answer => QuizController.evaluateAnswer(answer));
-      this.view.endQuizPane.setCallback(playerInitials => QuizController.updateScoreboard(playerInitials));
-      this.view.scoreboardPane.setCallback(
-        () => QuizView.welcomePane.show(),
-        () => QuizController.clearScoreboard()
-      );
+    this.view.highscoreLink.setCallback(() => {
+      QuizController.stopQuizTimer();
+      QuizView.scoreboardPane.show()
+    });
+    this.view.welcomePane.setCallback(() => QuizController.beginQuiz());
+    this.view.questionsPane.setCallback(answer =>
+      QuizController.evaluateAnswer(answer));
+    this.view.endQuizPane.setCallback(playerInitials =>
+      QuizController.updateScoreboard(playerInitials));
+    this.view.scoreboardPane.setCallback(
+      () => QuizView.welcomePane.show(),
+      () => QuizController.refreshScoreboard(),
+      () => QuizController.clearScoreboard()
+    );
 
-      this.view.highscoreLink.show();
-      this.view.welcomePane.show();
-    },
+    this.view.highscoreLink.show();
+    this.view.welcomePane.show();
+  },
 
 
   /*
     Start the timer nd 
    */
-  beginQuiz:
-    function() {
-      this.model.reset();
-      this.getNextQuestion();
-    },
+  beginQuiz() {
+    this.model.reset();
+    this.startQuizTimer();
+    this.getNextQuestion();
+  },
 
-  evaluateAnswer:
-    function(answer) {
-      if (this.model.isAnswerCorrect(answer)) {
-        this.view.setQuizStatus("Correct!");
-        this.model.increaseScore();
-      } else {
-        this.view.setQuizStatus("Wrong!");
-        this.model.substractTimePenalty();
-      }
-      this.getNextQuestion();
-    },
+  startQuizTimer() {
+    this.timer = setInterval(
+      () => {
+        let timeRemaining = this.model.getTimeRemaining();
+        this.model.tickTimeRemaining();
+
+        if (timeRemaining > 0) {
+          this.view.countdownTimer.show(timeRemaining);
+        } else {
+          this.stopQuizTimer;
+          this.endQuiz();
+        }
+      },
+      1000  
+    );    
+  },
+
+  stopQuizTimer() {
+    clearInterval(this.timer);
+  },
+
+  evaluateAnswer(answer) {
+    if (this.model.isAnswerCorrect(answer)) {
+      this.model.increaseScore();
+      this.view.statusBar.show("Correct!");
+    } else {
+      this.model.substractTimePenalty();
+      this.view.statusBar.show("Wrong!");
+    }
+    this.getNextQuestion();
+  },
 
 
   /*
@@ -235,27 +268,33 @@ let QuizController = {
     event listener to check answers. If there are no more questions, end the
     game.
    */
-  getNextQuestion:
-    function() {
-      let question = this.model.getNewQuestion();
-      if (question) {
-        this.view.questionsPane.show(question);
-      } else {
-        this.endQuiz();
-      }
-    },
+  getNextQuestion() {
+    let question = this.model.getNewQuestion();
+    if (question) {
+      this.view.questionsPane.show(question);
+    } else {
+      this.endQuiz();
+    }
+  },
 
-  endQuiz:
-    function() {
-      this.view.endQuizPane.show(this.model.getScore());
-    },
+  endQuiz() {
+    this.stopQuizTimer();
+    this.view.endQuizPane.show(this.model.getScore());
+  },
 
-  updateScoreboard:
-    function(playerInitials) {
-      this.model.addPlayerToScoreboard(playerInitials);
-      this.view.scoreboardPane.show();
-//      this.view.showScoreboardPane(this.model.getScoreboard());
-    },
+  updateScoreboard(playerInitials) {
+    this.model.addPlayerToScoreboard(playerInitials);
+    this.view.scoreboardPane.show();
+  },
+
+  refreshScoreboard() {
+    this.view.scoreboardPane.setScoreboard(this.model.getScoreboard());    
+  },
+
+  clearScoreboard() {
+    this.model.clearScoreboard();
+    this.refreshScoreboard();
+  }
 };
 
 
@@ -285,20 +324,29 @@ let QuizView = {
     /*
       The link is always shown with the header bar, so this only wires the event.
      */
-    show:
-      function() {
-        QuizView.getQuizHighScoresLink().addEventListener("click", () => {
-          event.preventDefault();
-          this.highscoreLinkCallback();
-        });
-      },
+    show() {
+      let highscoreLink = document.querySelector("#quiz-high-scores");
 
-    setCallback:
-      function(highscoreLinkCallback) {
-        this.highscoreLinkCallback = highscoreLinkCallback;
-      }
+      highscoreLink.addEventListener("click", () => {
+        event.preventDefault();
+        this.highscoreLinkCallback();
+      });
+    },
+
+    setCallback(highscoreLinkCallback) {
+      this.highscoreLinkCallback = highscoreLinkCallback;
+    }
   },
 
+
+  countdownTimer: {
+    show(timeRemaingSeconds) {
+      let timer = document.querySelector("#quiz-timer");
+      timer.textContent = timeRemaingSeconds;
+    },
+
+    setCallback() {}
+  },
 
   /*
    */
@@ -315,37 +363,32 @@ let QuizView = {
     /*
       Render the welcome pane on the screen.
      */
-    show:
-      function() {
-        QuizView.getQuizHeader().textContent = this.title;
-        QuizView.hideQuizStatus();
-        QuizView.clearQuizContent();
+    show() {
+      let divTag = document.createElement("div");
 
-        let
-          content = QuizView.getQuizContent(),
-          divTag = document.createElement("div");
+      QuizView.header.textContent = this.title;
+      QuizView.clear(QuizView.content);
       
-        for (let paragraph of this.text) {
-          let pTag = document.createElement("p");
-          pTag.textContent = paragraph;
-          content.appendChild(pTag)
-        }
-      
-        divTag.addEventListener("click", () => {
-          event.preventDefault();
-          if (event.target.matches("button")) {
-            this.beginQuizCallback();
-          }
-        });
-
-        divTag.appendChild(QuizView.addButton("Begin", QuizView.classNavButton));
-        content.appendChild(divTag);
-      },
-
-    setCallback:
-      function(beginQuizCallback) {
-        this.beginQuizCallback = beginQuizCallback;
+      for (let paragraph of this.text) {
+        let pTag = document.createElement("p");
+        pTag.textContent = paragraph;
+        QuizView.content.appendChild(pTag)
       }
+    
+      divTag.addEventListener("click", () => {
+        event.preventDefault();
+        if (event.target.matches("button")) {
+          this.beginQuizCallback();
+        }
+      });
+
+      divTag.appendChild(QuizView.addButton("Begin", QuizView.classNavButton));
+      QuizView.content.appendChild(divTag);
+    },
+
+    setCallback(beginQuizCallback) {
+      this.beginQuizCallback = beginQuizCallback;
+    }
   },
 
 
@@ -353,35 +396,31 @@ let QuizView = {
   questionsPane: {
     answerButtonCallback: null,
 
-    show:
-      function(question) {
-        QuizView.getQuizHeader().textContent = question.text;
-        QuizView.clearQuizContent();
+    show(question) {
+      let divTag = document.createElement("div");
 
-        let
-          content = QuizView.getQuizContent(),
-          divTag = document.createElement("div");
-      
-        for (let answer of question.answers) {
-          let answerButton = QuizView.addButton(answer.text, QuizView.classAnswerButton);
-          divTag.appendChild(answerButton);
+      QuizView.header.textContent = question.text;
+      QuizView.clear(QuizView.content);
+    
+      for (let answer of question.answers) {
+        let answerButton = QuizView.addButton(answer.text, QuizView.classAnswerButton);
+        divTag.appendChild(answerButton);
+      }
+
+      divTag.addEventListener("click", () => {
+        event.preventDefault();
+        if (event.target.matches("button")) {
+          let answer = event.target.value;
+          this.answerButtonCallback(answer);
         }
+      });
 
-        divTag.addEventListener("click", () => {
-          event.preventDefault();
-          if (event.target.matches("button")) {
-            let answer = event.target.value;
-            this.answerButtonCallback(answer);
-          }
-        });
+      QuizView.content.appendChild(divTag);
+    },
 
-        content.appendChild(divTag);
-      },
-
-    setCallback:
-      function(answerButtonCallback) {
-        this.answerButtonCallback = answerButtonCallback;
-      },
+    setCallback(answerButtonCallback) {
+      this.answerButtonCallback = answerButtonCallback;
+    },
   },
 
 
@@ -392,63 +431,58 @@ let QuizView = {
 
     submitInitialsCallback: null,
 
-    show:
-      function(score) {
-        QuizView.getQuizHeader().textContent = this.title;
-        QuizView.hideQuizStatus();
-        QuizView.clearQuizContent();
-  
-        let
-          content = QuizView.getQuizContent(),
-          pTag = document.createElement("p");
+    show(score) {
+      let pTag = document.createElement("p");
 
-        pTag.textContent = this.text.replace("{0}", score);
-        content.appendChild(pTag);
-        content.appendChild(this.addScoreBoardForm());  
-      },
+      QuizView.header.textContent = this.title;
+      QuizView.clear(QuizView.content);
 
-    setCallback:
-      function(submitInitialsCallback) {
-        this.submitInitialsCallback = submitInitialsCallback;
-      },
+      pTag.textContent = this.text.replace("{0}", score);
+      QuizView.content.appendChild(pTag);
+      QuizView.content.appendChild(this.addScoreBoardForm());  
+    },
 
-    addScoreBoardForm:
-      function(buttonCallback) {
-        let
-          formTag = document.createElement("form"),
-          divTag = document.createElement("div"),
-          labelTag = document.createElement("label"),
-          inputTag = document.createElement("input");
+    setCallback(submitInitialsCallback) {
+      this.submitInitialsCallback = submitInitialsCallback;
+    },
 
-        formTag.id = "quiz-scoreboard-form";
-        formTag.className = "form-inline";
+    addScoreBoardForm() {
+      let
+        formTag = document.createElement("form"),
+        divTag = document.createElement("div"),
+        labelTag = document.createElement("label"),
+        inputTag = document.createElement("input");
 
-        divTag.className = "form-group w-100";
+      formTag.id = "quiz-scoreboard-form";
+      formTag.className = "form-inline";
+      formTag.autocomplete = "off";
 
-        labelTag.textContent = "Enter your initials: ";
-        labelTag.className = "col-form-label";
-        labelTag.htmlFor = "player-initials"
+      divTag.className = "form-group w-100";
 
-        inputTag.id = "player-initials";
-        inputTag.type = "text";
-        inputTag.className = "form-control mx-0 mx-md-3"
+      labelTag.textContent = "Enter your initials: ";
+      labelTag.className = "col-form-label";
+      labelTag.htmlFor = "player-initials"
 
-        divTag.appendChild(labelTag);
-        divTag.appendChild(inputTag);
-        divTag.appendChild(QuizView.addButton("Submit", QuizView.classNavButton));
+      inputTag.id = "player-initials";
+      inputTag.type = "text";
+      inputTag.className = "form-control mx-0 mx-md-3"
 
-        divTag.addEventListener("click", () => {
-          event.preventDefault();
-          if (event.target.matches("button")) {
-            let initials = event.target.form.elements["player-initials"].value;
-            this.submitInitialsCallback(initials);
-          }
-        });
+      divTag.appendChild(labelTag);
+      divTag.appendChild(inputTag);
+      divTag.appendChild(QuizView.addButton("Submit", QuizView.classNavButton));
 
-        formTag.appendChild(divTag);
+      divTag.addEventListener("click", () => {
+        event.preventDefault();
+        if (event.target.matches("button")) {
+          let initials = event.target.form.elements["player-initials"].value.trim();
+          this.submitInitialsCallback(initials);
+        }
+      });
 
-        return formTag;
-      }
+      formTag.appendChild(divTag);
+
+      return formTag;
+    }
   },
 
 
@@ -457,48 +491,49 @@ let QuizView = {
     scoreboard: null,
 
     restartQuizCallback: null,
+    refreshScoreboardCallback: null,
     clearScoreboardCallback: null,
 
-    show:
-      function() {
-        QuizView.getQuizHeader().textContent = this.title;
-        QuizView.clearQuizContent();
-  
-        let
-          content = QuizView.getQuizContent(),
-          divTag = document.createElement("div");
+    show() {
+      let divTag = document.createElement("div");
 
-        content.appendChild(this.addScoreboardTable());
-        divTag.appendChild(QuizView.addButton("Go Back", QuizView.classNavButton));
-        divTag.appendChild(QuizView.addButton("Clear Highscores", QuizView.classNavButton));
-        content.append(divTag);
+      this.refreshScoreboardCallback();
+      QuizView.header.textContent = this.title;
+      QuizView.clear(QuizView.content);
 
-        divTag.addEventListener("click", () => {
-          event.preventDefault();
+      QuizView.content.appendChild(this.addScoreboardTable());
+      divTag.appendChild(QuizView.addButton("Go Back", QuizView.classNavButton));
+      divTag.appendChild(QuizView.addButton("Clear Highscores", QuizView.classNavButton));
+      QuizView.content.append(divTag);
 
-          if (event.target.matches("button")) {
-            let button = event.target.value;
+      divTag.addEventListener("click", () => {
+        event.preventDefault();
 
-            switch (button) {
-              case "Go Back":
-                this.restartQuizCallback();
-                break;
-              case "Clear Highscores":
-                this.clearScoreboardCallback();
-                break;
-              default:
-                alert("Invalid button");
-                break;
-            }
+        if (event.target.matches("button")) {
+          let button = event.target.value;
+
+          switch (button) {
+            case "Go Back":
+              this.restartQuizCallback();
+              break;
+            case "Clear Highscores":
+              this.clearScoreboardCallback();
+              this.show();
+              break;
+            default:
+              console.log("Invalid button value: %s", button);
+              break;
           }
-        });
-      },
+        }
+      });
+    },
 
-    setCallback:
-      function(restartQuizCallback, clearScoreboardCallback) {
-        this.restartQuizCallback = restartQuizCallback;
-        this.clearScoreboardCallback = clearScoreboardCallback;
-      },
+    setCallback(restartQuizCallback, refreshScoreboardCallback,
+        clearScoreboardCallback) {
+      this.restartQuizCallback = restartQuizCallback;
+      this.refreshScoreboardCallback = refreshScoreboardCallback;
+      this.clearScoreboardCallback = clearScoreboardCallback;
+    },
 
     addScoreboardTable() {
       let
@@ -527,96 +562,76 @@ let QuizView = {
       return tableTag;
     },
 
-    addScoreboardTableData:
-      function(dataContent) {
-        let tdTag = document.createElement("td");
-
-        tdTag.textContent = dataContent;
-        return tdTag;
-      },
+    addScoreboardTableData(dataContent) {
+      let tdTag = document.createElement("td");
+      tdTag.textContent = dataContent;
+      return tdTag;
+    },
 
 
     setScoreboard(scoreboard) {
       this.scoreboard = scoreboard;
     },
 
-     /*
-    Helper function to determine if a number is even. Used to create
-    color banded rows.
-   */
-  isEven:
-  function(number) {
-    return 0 === number % 2;
-  }
+    /*
+      Helper function to determine if a number is even. Used to create
+      color banded rows.
+     */
+    isEven(number) {
+      return (0 === number % 2);
+    }
+  },
+
+  statusBar: {
+    show(message) {
+      let
+        divStatus = document.querySelector("#quiz-status"),
+        success = message === "Correct!",
+        divTag = document.createElement("div");
+
+      divTag.className = success ?
+        "alert alert-success" :
+        "alert alert-danger";
+      divTag.setAttribute("role", "alert");
+      divTag.textContent = message;
+      divStatus.appendChild(divTag);
+
+      setTimeout(() => QuizView.clear(divStatus), 1000);
+    },
+
+    setCallback() {
+      /* no callbacks */
+    },
   },
 
 
   classNavButton: "btn btn-info text-left mr-1",
   classAnswerButton: "btn btn-lg btn-block btn-info text-left",
 
-  addButton:
-    function(buttonText, buttonStyle) {
-      let button = document.createElement("button");
-    
-      button.type = "submit";
-      button.textContent = buttonText;
-      button.value = buttonText;
-      button.className = buttonStyle;
+  addButton(buttonText, buttonStyle) {
+    let button = document.createElement("button");
+  
+    button.type = "submit";
+    button.textContent = buttonText;
+    button.value = buttonText;
+    button.className = buttonStyle;
 
-      return button;
-    },
-
-
-  clearQuizContent:
-    function() {
-      $("#quiz-content").empty();
-    },
-
-  hideQuizStatus:
-    function() {
-      $("#quiz-status").hide();
-    },
-
-  showQuizStatus:
-    function() {
-      $("#quiz-status").show();
-    },
-
-  setQuizStatus:
-    function(text) {
-      this.showQuizStatus();
-      this.getQuizStatus().textContent = text;
-    },
-
-  getQuizHighScoresLink:
-    function() {
-      return document.querySelector("#quiz-high-scores");
-    },
-
-  getQuizHeader:
-    function() {
-      return document.querySelector("#quiz-header");
-    },
-
-  getQuizContent:
-    function() {
-      return document.querySelector("#quiz-content");
-    },
-
-  getQuizStatus:
-    function() {
-      return document.querySelector("#quiz-status");
-    },
+    return button;
+  },
 
 
-  /*
-    Helper function to determine if a number is even. Used to create
-    color banded rows.
-   */
-  isEven:
-    function(number) {
-      return 0 === number % 2;
+  clear(elementRoot) {
+    while (elementRoot.lastElementChild) {
+      elementRoot.removeChild(elementRoot.lastElementChild);
     }
+  },
+
+  getQuizHeader() {
+    return document.querySelector("#quiz-header");
+  },
+
+  header: document.querySelector("#quiz-header"),
+  content: document.querySelector("#quiz-content"),
 };
 
 /*
