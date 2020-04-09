@@ -150,12 +150,10 @@ let QuizModel = {
         this.scoreboard = [];
       }
       let localScoreboard = localStorage.getItem("Scoreboard");
-console.log(this.scoreboard)
-alert(localScoreboard)
+
       if (localScoreboard) {
         this.scoreboard = JSON.parse(localScoreboard);
       }
-      
     },
 
   saveScoreboard:
@@ -186,8 +184,7 @@ let QuizController = {
 
 
   /*
-    Game entry point. Initialize the state and show the welcome pane, providing an
-    event to begin the quiz.
+    Quiz entry point. Initialize the state and show the welcome pane.
    */
   start:
     function() {
@@ -195,10 +192,18 @@ let QuizController = {
       this.view = QuizView;
 
       this.model.loadScoreboard();
+      this.view.scoreboardPane.setScoreboard(this.model.getScoreboard());
 
-      this.view.welcomePane.setListeners(() => QuizController.beginQuiz());
-      this.view.setHighScoreLink(() => QuizController.getScoreboardPane());
+      this.view.highscoreLink.setCallback(() => QuizView.showScoreboardPane());
+      this.view.welcomePane.setCallback(() => QuizController.beginQuiz());
+      this.view.questionsPane.setCallback(answer => QuizController.evaluateAnswer(answer));
+      this.view.endQuizPane.setCallback(playerInitials => QuizController.updateScoreboard(playerInitials));
+      this.view.scoreboardPane.setCallback(
+        () => QuizView.welcomePane.show(),
+        () => QuizController.clearScoreboard()
+      );
 
+      this.view.highscoreLink.show();
       this.view.welcomePane.show();
     },
 
@@ -209,10 +214,6 @@ let QuizController = {
   beginQuiz:
     function() {
       this.model.reset();
-      this.model.startTimer(() => {
-        event.preventDefault();
-        QuizController.endQuiz();
-      });
       this.getNextQuestion();
     },
 
@@ -238,8 +239,7 @@ let QuizController = {
     function() {
       let question = this.model.getNewQuestion();
       if (question) {
-        this.view.showQuestionPane(question,
-          answer => QuizController.evaluateAnswer(answer));
+        this.view.questionsPane.show(question);
       } else {
         this.endQuiz();
       }
@@ -247,25 +247,61 @@ let QuizController = {
 
   endQuiz:
     function() {
-      this.view.showQuizDonePane(this.model.getScore(),
-        playerInitials => QuizController.updateScoreboard(playerInitials));
+      this.view.endQuizPane.show(this.model.getScore());
     },
 
   updateScoreboard:
     function(playerInitials) {
       this.model.addPlayerToScoreboard(playerInitials);
-      this.view.showScoreboardPane(this.model.getScoreboard());
+      this.view.scoreboardPane.show();
+//      this.view.showScoreboardPane(this.model.getScoreboard());
     },
-
-  getScoreboardPane:
-    function() {
-      this.view.showScoreboardPane(this.model.getScoreboard());
-    }
 };
 
 
+/*
+  This object is organized into a collection of sub-objects, each of which is a
+  component on te back. Each component has, at minimum:
+
+  - A show() method that renders it and sets any event listeners.
+  - A setCallback() method, which sets any callbacks used by event listeners.
+
+  Below this components are a collection of shared methods for rendering to the
+  screen.
+ */
 let QuizView = {
 
+
+  /*
+    The "View High Scores" link in the upper left corner.
+   */
+  highscoreLink: {
+    /*
+      Callback to bring up the highscore board
+     */
+    highscoreLinkCallback: null,
+
+
+    /*
+      The link is always shown with the header bar, so this only wires the event.
+     */
+    show:
+      function() {
+        QuizView.getQuizHighScoresLink().addEventListener("click", () => {
+          event.preventDefault();
+          this.highscoreLinkCallback();
+        });
+      },
+
+    setCallback:
+      function(highscoreLinkCallback) {
+        this.highscoreLinkCallback = highscoreLinkCallback;
+      }
+  },
+
+
+  /*
+   */
   welcomePane: {
     title: "Coding Quiz Challenge",
     text: [
@@ -274,15 +310,20 @@ let QuizView = {
       "Good luck!"
     ],
 
-    beginListener: null,
+    beginQuizCallback: null,
 
+    /*
+      Render the welcome pane on the screen.
+     */
     show:
       function() {
         QuizView.getQuizHeader().textContent = this.title;
         QuizView.hideQuizStatus();
         QuizView.clearQuizContent();
 
-        let content = QuizView.getQuizContent();
+        let
+          content = QuizView.getQuizContent(),
+          divTag = document.createElement("div");
       
         for (let paragraph of this.text) {
           let pTag = document.createElement("p");
@@ -290,195 +331,241 @@ let QuizView = {
           content.appendChild(pTag)
         }
       
-        let divTag = document.createElement("div");
         divTag.addEventListener("click", () => {
           event.preventDefault();
           if (event.target.matches("button")) {
-            this.beginListener();
+            this.beginQuizCallback();
           }
         });
 
-        divTag.appendChild(QuizView.addQuizNavButton("Begin", null)
-        );
+        divTag.appendChild(QuizView.addButton("Begin", QuizView.classNavButton));
         content.appendChild(divTag);
       },
 
-    setListeners:
-      function(beginCallback) {
-        this.beginListener = beginCallback;
+    setCallback:
+      function(beginQuizCallback) {
+        this.beginQuizCallback = beginQuizCallback;
       }
   },
 
-  endGamePane: {
-    title: "All done!",
-    text: "Your score was {0}."
+
+
+  questionsPane: {
+    answerButtonCallback: null,
+
+    show:
+      function(question) {
+        QuizView.getQuizHeader().textContent = question.text;
+        QuizView.clearQuizContent();
+
+        let
+          content = QuizView.getQuizContent(),
+          divTag = document.createElement("div");
+      
+        for (let answer of question.answers) {
+          let answerButton = QuizView.addButton(answer.text, QuizView.classAnswerButton);
+          divTag.appendChild(answerButton);
+        }
+
+        divTag.addEventListener("click", () => {
+          event.preventDefault();
+          if (event.target.matches("button")) {
+            let answer = event.target.value;
+            this.answerButtonCallback(answer);
+          }
+        });
+
+        content.appendChild(divTag);
+      },
+
+    setCallback:
+      function(answerButtonCallback) {
+        this.answerButtonCallback = answerButtonCallback;
+      },
   },
+
+
+
+  endQuizPane: {
+    title: "All done!",
+    text: "Your score was {0}.",
+
+    submitInitialsCallback: null,
+
+    show:
+      function(score) {
+        QuizView.getQuizHeader().textContent = this.title;
+        QuizView.hideQuizStatus();
+        QuizView.clearQuizContent();
+  
+        let
+          content = QuizView.getQuizContent(),
+          pTag = document.createElement("p");
+
+        pTag.textContent = this.text.replace("{0}", score);
+        content.appendChild(pTag);
+        content.appendChild(this.addScoreBoardForm());  
+      },
+
+    setCallback:
+      function(submitInitialsCallback) {
+        this.submitInitialsCallback = submitInitialsCallback;
+      },
+
+    addScoreBoardForm:
+      function(buttonCallback) {
+        let
+          formTag = document.createElement("form"),
+          divTag = document.createElement("div"),
+          labelTag = document.createElement("label"),
+          inputTag = document.createElement("input");
+
+        formTag.id = "quiz-scoreboard-form";
+        formTag.className = "form-inline";
+
+        divTag.className = "form-group w-100";
+
+        labelTag.textContent = "Enter your initials: ";
+        labelTag.className = "col-form-label";
+        labelTag.htmlFor = "player-initials"
+
+        inputTag.id = "player-initials";
+        inputTag.type = "text";
+        inputTag.className = "form-control mx-0 mx-md-3"
+
+        divTag.appendChild(labelTag);
+        divTag.appendChild(inputTag);
+        divTag.appendChild(QuizView.addButton("Submit", QuizView.classNavButton));
+
+        divTag.addEventListener("click", () => {
+          event.preventDefault();
+          if (event.target.matches("button")) {
+            let initials = event.target.form.elements["player-initials"].value;
+            this.submitInitialsCallback(initials);
+          }
+        });
+
+        formTag.appendChild(divTag);
+
+        return formTag;
+      }
+  },
+
 
   scoreboardPane: {
-    title: "Highscores"
-  },
+    title: "Highscores",
+    scoreboard: null,
 
+    restartQuizCallback: null,
+    clearScoreboardCallback: null,
 
-  showQuizWelcomePane:
-    function(beginCallback) {
-      this.getQuizHeader().textContent = this.welcomePane.title;    
-      this.clearQuizContent();
-    
-      for (let paragraph of this.welcomePane.text) {
-        let pTag = document.createElement("p");
-        pTag.textContent = paragraph;
-        this.getQuizContent().appendChild(pTag)
-      }
-    
-      this.getQuizContent().appendChild(
-        this.addQuizNavButton("Begin", beginCallback)
-      );
-    
-      this.hideQuizStatus();
-    },
+    show:
+      function() {
+        QuizView.getQuizHeader().textContent = this.title;
+        QuizView.clearQuizContent();
+  
+        let
+          content = QuizView.getQuizContent(),
+          divTag = document.createElement("div");
 
-  showQuestionPane:
-    function(question, answerCallback) {
-      this.getQuizHeader().textContent = question.text;
-      this.clearQuizContent();
-    
-      for (let answer of question.answers) {
-        let answerButton = this.addQuizAnswerButton(answer.text, answerCallback);
-        this.getQuizContent().appendChild(answerButton);
-      }
-    },
+        content.appendChild(this.addScoreboardTable());
+        divTag.appendChild(QuizView.addButton("Go Back", QuizView.classNavButton));
+        divTag.appendChild(QuizView.addButton("Clear Highscores", QuizView.classNavButton));
+        content.append(divTag);
 
-  showQuizDonePane:
-    function(score, updateScoreboardCallback) {
-      this.getQuizHeader().textContent = this.endGamePane.title;
-      this.clearQuizContent();
+        divTag.addEventListener("click", () => {
+          event.preventDefault();
 
-      let pTag = document.createElement("p");
-      pTag.textContent = this.endGamePane.text.replace("{0}", score);
-      this.getQuizContent().appendChild(pTag);
-      this.getQuizContent().appendChild(
-        this.addScoreBoardForm(updateScoreboardCallback)
-      );
-    },
+          if (event.target.matches("button")) {
+            let button = event.target.value;
 
-  showScoreboardPane:
-    function(scoreboard) {
-      this.getQuizHeader().textContent = this.scoreboardPane.title;
-      this.clearQuizContent();
+            switch (button) {
+              case "Go Back":
+                this.restartQuizCallback();
+                break;
+              case "Clear Highscores":
+                this.clearScoreboardCallback();
+                break;
+              default:
+                alert("Invalid button");
+                break;
+            }
+          }
+        });
+      },
 
-      this.getQuizContent().appendChild(this.addScoreboardTable(scoreboard));
-      this.getQuizContent().appendChild(this.addQuizNavButton("Go Back", null));
-      this.getQuizContent().appendChild(this.addQuizNavButton("Clear Highscores", null));
-    },
+    setCallback:
+      function(restartQuizCallback, clearScoreboardCallback) {
+        this.restartQuizCallback = restartQuizCallback;
+        this.clearScoreboardCallback = clearScoreboardCallback;
+      },
 
-  setHighScoreLink:
-    function(scoreboardCallback) {
-      this.getQuizHighScoresLink().addEventListener("click", scoreboardCallback);
-    },
-
-  addScoreBoardForm:
-    function(buttonCallback) {
+    addScoreboardTable() {
       let
-        formTag = document.createElement("form"),
-        divTag = document.createElement("div"),
-        labelTag = document.createElement("label"),
-        inputTag = document.createElement("input");
+        scoreboard = this.scoreboard,
+        tableTag = document.createElement("table"),
+        tbodyTag = document.createElement("tbody");
+      
+      tableTag.classList = "table";
 
-      formTag.id = "quiz-scoreboard-form";
-      formTag.className = "form-inline";
+      for (let i = 0; i < scoreboard.length; i++) {
+        let trTag = document.createElement("tr");
 
-      divTag.className = "form-group w-100";
+        if (this.isEven(i)) {
+          trTag.classList = "table-info";
+        }
 
-      labelTag.textContent = "Enter your initials: ";
-      labelTag.className = "col-form-label";
-      labelTag.htmlFor = "player-initials"
+        trTag.appendChild(this.addScoreboardTableData(i + 1));
+        trTag.appendChild(this.addScoreboardTableData(scoreboard[i].initials));
+        trTag.appendChild(this.addScoreboardTableData(scoreboard[i].score));
 
-      inputTag.id = "player-initials";
-      inputTag.type = "text";
-      inputTag.className = "form-control mx-0 mx-md-3"
-
-      divTag.appendChild(labelTag);
-      divTag.appendChild(inputTag);
-
-      divTag.appendChild(this.addQuizNavButton("Submit", () => {
-        event.preventDefault();
-        let initials = event.target.form.elements["player-initials"].value;
-        buttonCallback(initials);
-      }));
-
-      formTag.appendChild(divTag);
-
-      return formTag;
-    },
-
-  addScoreboardTable(scoreboard) {
-    let
-      tableTag = document.createElement("table"),
-      tbodyTag = document.createElement("tbody");
-    
-    tableTag.classList = "table";
-
-    for (let i = 0; i < scoreboard.length; i++) {
-      let trTag = document.createElement("tr");
-
-      if (this.isEven(i)) {
-        trTag.classList = "table-info";
+        tbodyTag.appendChild(trTag)
       }
 
-      trTag.appendChild(this.addScoreboardTableData(i + 1));
-      trTag.appendChild(this.addScoreboardTableData(scoreboard[i].initials));
-      trTag.appendChild(this.addScoreboardTableData(scoreboard[i].score));
+      tableTag.appendChild(tbodyTag);
 
-      tbodyTag.appendChild(trTag)
-    }
+      return tableTag;
+    },
 
-    tableTag.appendChild(tbodyTag);
+    addScoreboardTableData:
+      function(dataContent) {
+        let tdTag = document.createElement("td");
 
-    return tableTag;
+        tdTag.textContent = dataContent;
+        return tdTag;
+      },
+
+
+    setScoreboard(scoreboard) {
+      this.scoreboard = scoreboard;
+    },
+
+     /*
+    Helper function to determine if a number is even. Used to create
+    color banded rows.
+   */
+  isEven:
+  function(number) {
+    return 0 === number % 2;
+  }
   },
 
-  addScoreboardTableData:
-    function(dataContent) {
-      let tdTag = document.createElement("td");
 
-      tdTag.textContent = dataContent;
-      return tdTag;
-    },
+  classNavButton: "btn btn-info text-left mr-1",
+  classAnswerButton: "btn btn-lg btn-block btn-info text-left",
 
-  addQuizNavButton:
-    function(buttonText, buttonCallback) {
-      let button = this.addQuizButton(buttonText);
-    
-      button.className = "btn btn-info text-left mr-1";
-      if (buttonCallback) {
-        button.addEventListener("click", () => buttonCallback());
-      }
-      return button;
-    },
-    
-  addQuizAnswerButton:
-    function(buttonText, buttonCallback) {
-      let button = this.addQuizButton(buttonText);
-    
-      button.className = "btn btn-lg btn-block btn-info text-left";
-      button.addEventListener("click", () => {
-        event.preventDefault();
-        buttonCallback(button.value)
-      });
-    
-      return button;
-    },
-    
-  addQuizButton:
-    function(buttonText) {
+  addButton:
+    function(buttonText, buttonStyle) {
       let button = document.createElement("button");
     
       button.type = "submit";
       button.textContent = buttonText;
       button.value = buttonText;
+      button.className = buttonStyle;
 
       return button;
     },
+
 
   clearQuizContent:
     function() {
