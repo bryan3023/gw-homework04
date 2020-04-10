@@ -22,10 +22,190 @@ let QuizModel = {
     },
     {
       id: 1,
-      text: "test",
+      text: "What is the term for combining two strings into one?",
       answers: [
-        { text: "a" },
-        { text: "b", correct: true }
+        { text: "Magic" },
+        { text: "String summing" },
+        { text: "Concatenation", correct: true },
+        { text: "Putting shit together" }
+      ]
+    },
+    {
+      id: 2,
+      text: "What is the differnence between \"==\" and \"===\"?",
+      answers: [
+        { text: "\"===\" tells JavaScript you really mean it." },
+        { text: "Both test for equality of value, but \"===\" also tests equality of type.", correct: true },
+        { text: "\"==\" tests for equality of numeric values. \"===\" tests equality of strings." },
+        { text: "\"===\" first tests for equality, then assigns the right value to the left variable." }
+      ]
+    },
+    {
+      id: 3,
+      text: "The function to convert a value to an integer is:",
+      answers: [
+        { text: "parseFloat()" },
+        { text: "toInteger()" },
+        { text: "covertToInteger()" },
+        { text: "parseInt()", correct: true }
+      ]
+    },
+    {
+      id: 4,
+      text: "Which of the following is not a JavaScript data type?",
+      answers: [
+        { text: "Object" },
+        { text: "Number" },
+        { text: "Float", correct: true },
+        { text: "Boolean" }
+      ]
+    },
+    {
+      id: 5,
+      text: "Which of the following is not a special numerical value?",
+      answers: [
+        { text: "Ludicrous", correct: true },
+        { text: "Infinity" },
+        { text: "Negative infinity" },
+        { text: "NaN" }
+      ]
+    },
+    {
+      id: 6,
+      text: "Which company developed JavaScript?",
+      answers: [
+        { text: "Microsoft" },
+        { text: "Netscape", correct: true },
+        { text: "Google" },
+        { text: "Sun Mirosystems" }
+      ]
+    },
+    {
+      id: 7,
+      text: "An undeclared variable is the same as an undefined variable.",
+      answers: [
+        { text: "true" },
+        { text: "false", correct: true }
+      ]
+    },
+    {
+      id: 8,
+      text: "Which of the following is not a type of loop supported in JavaScript?",
+      answers: [
+        { text: "for" },
+        { text: "do...while" },
+        { text: "while" },
+        { text: "foreach", correct: true }
+      ]
+    },
+    {
+      id: 9,
+      text: "Which of the following will return a string?",
+      answers: [
+        { text: "prompt()", correct: true },
+        { text: "alert()" },
+        { text: "messageBox()" },
+        { text: "confirm()" }
+      ]
+    },
+    {
+      id: 10,
+      text: "How would you add an element to the end of an array?",
+      answers: [
+        { text: "array.pop(element)" },
+        { text: "array.append(element)" },
+        { text: "array += element" },
+        { text: "array.push(element)", correct: true}
+      ]
+    },
+    {
+      id: 11,
+      text: "What statement should you add to a switch clause to prevent falling through to the next case?",
+      answers: [
+        { text: "exit" },
+        { text: "return" },
+        { text: "break", correct: true },
+        { text: "stop" }
+      ]
+    },
+    {
+      id: 12,
+      text: "Which standards body manages the development of JavaScript?",
+      answers: [
+        { text: "ANSI" },
+        { text: "ECMA", correct: true },
+        { text: "NIST" },
+        { text: "W3C" }
+      ]
+    },
+    {
+      id: 13,
+      text: "What is the name of the object used to get information about the users browser?",
+      answers: [
+        { text: "navigator", correct: true },
+        { text: "browser" },
+        { text: "mosaic" },
+        { text: "explorer" }
+      ]
+    },
+    {
+      id: 14,
+      text: "What method would you use to respond to events on a page?",
+      answers: [
+        { text: "addEventHandler()" },
+        { text: "onEvent()" },
+        { text: "addEventListener()", correct: true },
+        { text: "whenSomethingHappens()" }
+      ]
+    },
+    {
+      id: 15,
+      text: "What is it that allows a parent element to respond to events from its children?",
+      answers: [
+        { text: "event fencing" },
+        { text: "event bubbling" },
+        { text: "event capture" },
+        { text: "event delegation", correct: true }
+      ]
+    },
+    {
+      id: 16,
+      text: "Which of the following is NOT a logical boolean operator?",
+      answers: [
+        { text: "&&" },
+        { text: "~", correct: true },
+        { text: "!" },
+        { text: "||" }
+      ]
+    },
+    {
+      id: 17,
+      text: "querySelector(\".name\") will return results based on what?",
+      answers: [
+        { text: "Class name", correct: true },
+        { text: "Element name" },
+        { text: "Child element name"},
+        { text: "Id name" }
+      ]
+    },
+    {
+      id: 18,
+      text: "How would you write a single-line comment in JavaScript?",
+      answers: [
+        { text: "# comment" },
+        { text: "/* comment */" },
+        { text: "(* comment *)" },
+        { text: "// comment", correct: true }
+      ]
+    },
+    {
+      id: 19,
+      text: "Which of the following is NOT a function for working with timers in JavaScript?",
+      answers: [
+        { text: "setTimeout()" },
+        { text: "createTimeout()", correct: true },
+        { text: "setInternal()" },
+        { text: "clearInterval()" }
       ]
     }
   ],
