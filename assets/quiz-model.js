@@ -1,17 +1,14 @@
 /*
-  Implements the game along a simplistic model-view-controller
-  pattern. The program is organized along the following
-  guidelines:
-   - Neither the model nor the controller can access the DOM.
-   - Neither the model nor the view can directly interact with the controller.
-   - The view cannot directly interact with the model or vice versa.
-   - The controller should only interact with the model and view via
-     provided methods.
+  Implements part of an MVC pattern. See README.md in the root of
+  this repo.
  */
 
-"use strict";
+ "use strict";
 
 
+/*
+  This object manages the state of the game.
+ */
 let QuizModel = {
 
   questions: [
@@ -53,22 +50,24 @@ let QuizModel = {
   },
 
 
+  // --- Question retrieval and evaluation methods ---
+
   /*
-    If available, return a new question and append its ID to the list of those
-    that have been asked. If there are no more questions, return null.
+    See if there are any more questions available. If so, pick one at random,
+    add it to the list of questions that have been asked, and return it. If
+    there are no more questions, return null.
    */
   getNewQuestion() {
-      let
-        available = this.getAvailableQuestions();
-      
-      if (0 !== available.length) {
-        let selected = available[available.length - 1];
-        this.currentGame.askedQuestions.push(selected.id);
-        return selected;
-      } else {
-        return null;
-      }
-    },
+    let available = this.getAvailableQuestions();
+    
+    if (available.length) {
+      let selected = available[this.getRandomInt(0, available.length - 1)];
+      this.currentGame.askedQuestions.push(selected.id);
+      return selected;
+    } else {
+      return null;
+    }
+  },
 
 
   /*
@@ -76,9 +75,9 @@ let QuizModel = {
     been asked yet.
    */
   getAvailableQuestions() {
-      return this.questions.filter(
-        q => -1 === this.currentGame.askedQuestions.indexOf(q.id));
-    },
+    return this.questions.filter(
+      q => -1 === this.currentGame.askedQuestions.indexOf(q.id));
+  },
 
 
   /*
@@ -86,25 +85,36 @@ let QuizModel = {
     for the current question.
    */
   isAnswerCorrect(answer) {
-      let
-        currentQuestion = this.questions.filter(q => q.id === this.getCurrentQuestionId())[0],
-        correctAnswer = currentQuestion.answers.filter(a => a.correct)[0];
+    let
+      currentQuestion = this.questions.filter(q => q.id === this.getCurrentQuestionId())[0],
+      correctAnswer = currentQuestion.answers.filter(a => a.correct)[0];
 
-      return correctAnswer.text === answer;
-    },
+    return correctAnswer.text === answer;
+  },
 
 
   /*
-    Return the current (i.e., last) question from the list of
+    Return the ID of the current (i.e., last) question from the list of
     those that have been asked.
    */
   getCurrentQuestionId() {
-      let asked = this.currentGame.askedQuestions;
-      return asked[asked.length - 1];
-    },
+    let asked = this.currentGame.askedQuestions;
+    return asked[asked.length - 1];
+  },
+
+
+  // --- Player score methods ---
 
   /*
-    Return the final score of the game.
+    Increment the raw score for correct answers.
+   */
+  increaseScore() {
+    this.currentGame.countCorrectAnswers++;
+  },
+
+
+  /*
+    Return the calculated final score of the game.
    */
   getScore() {
     return this.currentGame.countCorrectAnswers
@@ -112,13 +122,19 @@ let QuizModel = {
   },
 
 
+  // --- Scoreboard retrieval and management methods ---
+
   /*
+    Return the current scoreboard.
    */
-  increaseScore() {
-    this.currentGame.countCorrectAnswers++;
+  getScoreboard() {
+    return this.scoreboard;
   },
 
 
+  /*
+    Add a player's initials and score to the scoreboard.
+   */
   addPlayerToScoreboard(playerInitials) {
     this.scoreboard.push({
       initials: playerInitials,
@@ -127,10 +143,45 @@ let QuizModel = {
     this.saveScoreboard();
   },
 
-  getScoreboard() {
-    return this.scoreboard;
+
+  /*
+    Retrieve the scoreboard from local storage. If it doesn't exist, create
+    an empty on.
+   */
+  loadScoreboard() {
+    let localScoreboard = localStorage.getItem("Scoreboard");
+
+    if (localScoreboard) {
+      this.scoreboard = JSON.parse(localScoreboard);
+    } else {
+      this.scoreboard = [];
+    }
   },
 
+
+  /*
+    Sort the scoreboard so that rows are ordered by players' scores descending,
+    then save it to local storage.
+   */
+  saveScoreboard() {
+    let sortedScoreboard = this.scoreboard.sort(this.sortScoreboardScoreDescending);
+    localStorage.setItem("Scoreboard", JSON.stringify(sortedScoreboard));
+  },
+
+
+  /*
+    Remove the scoreboard from local storage and set it to be empty.
+   */
+  clearScoreboard() {
+    localStorage.removeItem("Scoreboard");
+    this.scoreboard = [];
+  },
+
+
+  /*
+    If -1, player1 comes before player2. If 1, player1 comes after player2.
+    If 0, the order will be unchanged.
+   */
   sortScoreboardScoreDescending(player1, player2) {
     if (player1.score > player2.score) {
       return -1;
@@ -141,43 +192,54 @@ let QuizModel = {
     return 0;
   },
 
-  loadScoreboard() {
-    if (!this.scoreboard) {
-      this.scoreboard = [];
-    }
-    let localScoreboard = localStorage.getItem("Scoreboard");
 
-    if (localScoreboard) {
-      this.scoreboard = JSON.parse(localScoreboard);
-    }
-  },
+  // --- Quiz timer methods ---
 
-  saveScoreboard() {
-    let sortedScoreboard = this.scoreboard.sort(this.sortScoreboardScoreDescending);
-    localStorage.setItem("Scoreboard", JSON.stringify(sortedScoreboard));
-  },
-
-  clearScoreboard() {
-    localStorage.removeItem("Scoreboard");
-    this.scoreboard = [];
-  },
-
+  /*
+    Get the current number of seconds remaining.
+   */
   getTimeRemaining() {
     return this.currentGame.timeRemaingSeconds;
   },
 
+
+  /*
+    Decrement the timer on the next interval.
+   */
   tickTimeRemaining() {
       this.currentGame.timeRemaingSeconds--;
   },
 
+
+  /*
+    Put a penalty on the timer for wrong answers.
+   */
   substractTimePenalty() {
     this.currentGame.timeRemaingSeconds
       -= this.gameParameters.incorrectPenaltySeconds;
   },
 
+
+  // -- Quiz stat reset method --
+
+  /*
+    Reset the current state to its defaults so the player can play again.
+   */
   reset() {
-      this.currentGame.timeRemaingSeconds = this.gameParameters.countdownStartSeconds;
-      this.currentGame.countCorrectAnswers = 0;
-      this.currentGame.askedQuestions = [];
-    }
+    this.currentGame.timeRemaingSeconds = this.gameParameters.countdownStartSeconds;
+    this.currentGame.countCorrectAnswers = 0;
+    this.currentGame.askedQuestions = [];
+  },
+
+
+  // -- Helper method ---
+
+  /*
+    Return a random integer within an inclusive range.
+   */
+  getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
 };

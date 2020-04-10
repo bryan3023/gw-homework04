@@ -1,18 +1,22 @@
+ /*
+  Implements part of an MVC pattern. See README.md in the root of
+  this repo.
+ */
 
-
+"use strict;"
 
 /*
   This object is organized into a collection of sub-objects, each of which is a
-  component on te back. Each component has, at minimum:
+  component on the page. Each component has, at minimum:
 
   - A show() method that renders it and sets any event listeners.
   - A setCallback() method, which sets any callbacks used by event listeners.
 
   Below this components are a collection of shared methods for rendering to the
   screen.
- */
-let QuizView = {
+*/
 
+let QuizView = {
 
     /*
       The "View High Scores" link in the upper left corner.
@@ -46,9 +50,7 @@ let QuizView = {
       show(timeRemaingSeconds) {
         let timer = document.querySelector("#quiz-timer");
         timer.textContent = timeRemaingSeconds;
-      },
-  
-      setCallback() {}
+      }
     },
   
     /*
@@ -300,11 +302,7 @@ let QuizView = {
         divStatus.appendChild(divTag);
   
         setTimeout(() => QuizView.clear(divStatus), 1000);
-      },
-  
-      setCallback() {
-        /* no callbacks */
-      },
+      }
     },
   
   
@@ -336,14 +334,4 @@ let QuizView = {
     header: document.querySelector("#quiz-header"),
     content: document.querySelector("#quiz-content"),
   };
-  
-  /*
-    Return a random integer within an inclusive range.
-   */
-  function getRandomInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-  
   
