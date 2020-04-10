@@ -204,7 +204,7 @@ let QuizModel = {
       answers: [
         { text: "setTimeout()" },
         { text: "createTimeout()", correct: true },
-        { text: "setInternal()" },
+        { text: "setInterval()" },
         { text: "clearInterval()" }
       ]
     }
@@ -241,7 +241,7 @@ let QuizModel = {
     let available = this.getAvailableQuestions();
     
     if (available.length) {
-      let selected = available[this.getRandomInt(0, available.length - 1)];
+      let selected = available[getRandomInt(0, available.length - 1)];
       this.currentGame.askedQuestions.push(selected.id);
       return selected;
     } else {
@@ -409,17 +409,5 @@ let QuizModel = {
     this.currentGame.timeRemaingSeconds = this.gameParameters.countdownStartSeconds;
     this.currentGame.countCorrectAnswers = 0;
     this.currentGame.askedQuestions = [];
-  },
-
-
-  // -- Helper method ---
-
-  /*
-    Return a random integer within an inclusive range.
-   */
-  getRandomInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 };

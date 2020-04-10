@@ -126,12 +126,14 @@ let QuizView = {
       Render the pane on the page. Expects a question object.
      */
     show(question) {
-      let divTag = document.createElement("div");
+      let
+        answers = this.randomizedAnswers(question.answers),
+        divTag = document.createElement("div");
 
       QuizView.header.textContent = question.text;
       QuizView.clear(QuizView.content);
     
-      for (let answer of question.answers) {
+      for (let answer of answers) {
         let answerButton = QuizView.addButton(answer.text, QuizView.classAnswerButton);
         divTag.appendChild(answerButton);
       }
@@ -151,6 +153,25 @@ let QuizView = {
     setCallback(answerButtonCallback) {
       this.answerButtonCallback = answerButtonCallback;
     },
+
+
+    /*
+      Given a set of answers, create a copy and then build a randomized array
+      of those answers.
+     */
+    randomizedAnswers(answers) {
+      let
+        copy = answers.slice(0),
+        randomizedAnswers = [];
+
+      while (randomizedAnswers.length !== answers.length) {
+        let answerIndex = getRandomInt(0, copy.length - 1);
+        randomizedAnswers.push(copy[answerIndex]);
+        copy.splice(answerIndex, 1);
+      }
+
+      return randomizedAnswers;
+    }
   },
 
 
