@@ -7,7 +7,7 @@
 
 
 /*
-  This object initialized the game and reponds to events wired into
+  This object initializes the game and responds to events wired into
   the view.
  */
 let QuizController = {

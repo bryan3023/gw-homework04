@@ -9,12 +9,12 @@
   This object is organized into a collection of sub-objects, each of which is a
   component on the page.
 
-  At minimum, each component has a show() methods, which
-  renders it on the page. Many also have a setCallback() method, which sets
-  any callbacks used by event listeners.
+  At minimum, each component has a show() methods, which renders it on the
+  page. Many also have a setCallback() method, which sets any callbacks used by
+  event listeners.
 
-  Below this components are a collection of shared methods for rendering to the
-  screen.
+  Below these components are a few shared properties and methods for rendering
+  to the screen.
  */
 let QuizView = {
 
@@ -155,7 +155,7 @@ let QuizView = {
 
 
   /*
-    The pane shown after a quiz it complete, allowing players to enter their
+    The pane shown after a quiz is complete, allowing players to enter their
     initials to add their results to the scoreboard.
    */
   endQuizPane: {
@@ -242,7 +242,7 @@ let QuizView = {
 
 
     /*
-      Callback to begin to back to the welcome pane.
+      Callback to return back to the welcome pane.
      */
     restartQuizCallback: null,
   
@@ -306,7 +306,7 @@ let QuizView = {
 
 
     /*
-      Return a table of players' rank, initials, and scores.
+      Return a table of players' ranks, initials, and scores.
      */
     addScoreboardTable() {
       let
@@ -337,7 +337,7 @@ let QuizView = {
 
 
     /*
-      Return an inidividual <td> element for the scoreboard table.
+      Return an individual <td> element for the scoreboard table.
      */
     addScoreboardTableData(dataContent) {
       let tdTag = document.createElement("td");
@@ -370,7 +370,7 @@ let QuizView = {
    */
   statusBar: {
     /*
-      Based on the player's answer, show a message that disappers
+      Based on the player's answer, show a message that disappears
       after 1 second.
      */
     show(message) {
@@ -391,9 +391,11 @@ let QuizView = {
   },
 
 
+  // -- Shared methods and properties ---
+
   /*
     Return a button with the specified text and style. The value
-    will match the text.
+    will always match the text.
    */
   addButton(buttonText, buttonStyle) {
     let button = document.createElement("button");
