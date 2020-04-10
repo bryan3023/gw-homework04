@@ -1,0 +1,19 @@
+/*
+  Ensure quiz headers look good on smaller devices. Based on
+  Bootstrap medium size, as described at:
+  
+    https://getbootstrap.com/docs/4.0/layout/overview/
+ */
+
+
+@media (max-width: 767px) {
+  h1#quiz-header {
+    font-size: 20pt;
+  }
+}
+
+@media (min-width: 768px) { 
+  h1#quiz-header {
+    font-size: 24pt;
+  }
+}
