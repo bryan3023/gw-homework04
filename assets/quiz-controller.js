@@ -106,10 +106,10 @@ let QuizController = {
         let timeRemaining = this.model.getTimeRemaining();
         this.model.tickTimeRemaining();
 
-        if (timeRemaining > 0) {
+        if (timeRemaining >= 0) {
           this.view.countdownTimer.show(timeRemaining);
         } else {
-          this.stopQuizTimer;
+          this.stopQuizTimer();
           this.endQuiz();
         }
       },
