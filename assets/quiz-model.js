@@ -298,7 +298,8 @@ let QuizModel = {
    */
   getScore() {
     return this.currentGame.countCorrectAnswers
-      * this.gameParameters.pointsPerCorrectAnswer;
+      * this.gameParameters.pointsPerCorrectAnswer
+      * this.currentGame.timeRemaingSeconds;
   },
 
 
