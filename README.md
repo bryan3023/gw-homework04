@@ -20,7 +20,7 @@ A lot of what was described was beyond my current skill level with JavaScript (a
 - **QuizView** - this is responsible for providing the user interface for the game.
 - **QuizController** - this is responsible for initializing the game and then responding to events to affect changes in both the model and the view.
 
-The **QuizController** is probably the best starting point reading the solution.
+The **QuizController** is probably the best starting for point reading the solution.
 
 Starting with this pattern, I tried to work within the following constraints:
 
